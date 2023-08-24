@@ -118,6 +118,7 @@ class TestCase():
                  input: Path,
                  output: Path,
                  options: list[str],):
+        """CHANGE ME!"""
         self.status = True
         self.suite_name: str = suite_name
         self.test_name: str = test_name
@@ -158,6 +159,7 @@ class TestCase():
         self.logger.info(f"{self.test_name} [{Color.PASS}PASS{Color.ENDC}] {msg}")
 
     def run(self, program: Path, copyback: bool):
+        """CHANGE ME!"""
         proc = subprocess.run(["python3", program, self.input, WORK_DIR / self.output] + self.options, capture_output=True)
 
         if proc.stdout != b"":
@@ -231,7 +233,7 @@ class TestSuite():
         self.logger.info(f"Suite {self.suite_name} finished with status {Color.BOLD}{Color.PASS}PASS{Color.ENDC}")
 
     def configure_tests(self):
-        """Configure test suite according to TOML file."""
+        """CHANGE ME! Configure test suite according to TOML file."""
         config_file = SUITES_DIR / f"{self.suite_name}.toml"
 
         if not config_file.is_file():
@@ -260,6 +262,7 @@ class TestSuite():
             self.tests.append(TestCase(self.suite_name, testcase, self.top_results_dir, input, output, self.options))
 
     def run(self, program: Path, copyback: bool):
+        """CHANGE ME!"""
         if not program.is_file():
             self.suite_fail_msg(f"Program `{program}` is not a valid executable.")
             return
