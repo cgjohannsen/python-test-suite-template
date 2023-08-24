@@ -1,0 +1,13 @@
+suite = "pass"
+
+[options]
+option = true
+
+[test]
+
+    [test.A]
+    input = "A.txt"
+    parameter = 25
+
+    [test.B]
+    input = "B.txt"
