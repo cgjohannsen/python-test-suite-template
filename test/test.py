@@ -96,7 +96,7 @@ def mkdir(dir: Path, quiet: bool):
 
 
 def collect_options(contents: dict[str, str | bool]) -> list[str]:
-    """Filter all r2u2prep options from suite and return options in a cli-suitable list."""
+    """CHANGE ME!"""
     options = []
 
     if "option" in contents and contents["option"]:
