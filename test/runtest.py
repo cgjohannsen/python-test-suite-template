@@ -1,10 +1,10 @@
 from __future__ import annotations
+from ctypes.wintypes import WORD
 from glob import glob
 from pathlib import Path
 from typing import Any
 
 import argparse
-import re
 import shutil
 import sys
 import tomllib
@@ -12,62 +12,13 @@ import os
 import subprocess
 import logging
 
-CWD = Path(__file__).parent
-SUITES_DIR = CWD / "suites"
-TEST_DIR = CWD / "inputs"
-WORK_DIR = CWD / "__workdir"
+from logger import toplevel_logger, Color, Formatter, ColorFormatter
 
-class Color:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    PASS = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
 
-class Formatter(logging.Formatter):
-    format_str = '%(levelname)s'
-
-    FORMATS = {
-        logging.DEBUG: format_str + ': %(message)s',
-        logging.INFO: '%(message)s',
-        logging.WARNING: format_str + ': %(message)s',
-        logging.ERROR: format_str + ': %(message)s',
-        logging.CRITICAL: format_str + ': %(message)s',
-    }
-
-    def format(self, record) -> str:
-        record.msg = re.sub(r"\033\[\d\d?m", "", record.msg) # removes color from msg
-        log_fmt = self.FORMATS.get(record.levelno)
-        formatter = logging.Formatter(log_fmt)
-        return formatter.format(record)
-
-class ColorFormatter(logging.Formatter):
-    format_str = '%(levelname)s'
-
-    FORMATS = {
-        logging.DEBUG: Color.OKBLUE + format_str + Color.ENDC + ': %(message)s',
-        logging.INFO: '%(message)s',
-        logging.WARNING: Color.WARNING + format_str + Color.ENDC + ': %(message)s',
-        logging.ERROR: Color.FAIL + format_str + Color.ENDC + ': %(message)s',
-        logging.CRITICAL: Color.UNDERLINE + Color.FAIL + format_str + Color.ENDC + ': %(message)s'
-    }
-
-    def format(self, record):
-        log_fmt = self.FORMATS.get(record.levelno)
-        formatter = logging.Formatter(log_fmt)
-        return formatter.format(record)
-
-toplevel_logger = logging.getLogger(__name__)
-toplevel_logger.setLevel(logging.DEBUG)
-
-stream_handler = logging.StreamHandler(sys.stdout)
-stream_handler.setLevel(logging.DEBUG)
-stream_handler.setFormatter(ColorFormatter())
-toplevel_logger.addHandler(stream_handler)
+TEST_DIR = Path(__file__).parent
+SUITES_DIR = TEST_DIR / "suites"
+FILES_DIR = TEST_DIR / "inputs"
+WORK_DIR = TEST_DIR / "__workdir"
 
 
 def cleandir(dir: Path, quiet: bool):
@@ -95,37 +46,17 @@ def mkdir(dir: Path, quiet: bool):
         os.mkdir(dir)
 
 
-def collect_options(contents: dict[str, str | bool]) -> list[str]:
-    """CHANGE ME!"""
-    options = []
-
-    if "option" in contents and contents["option"]:
-        options.append("--option")
-
-    if "parameter" in contents:
-        options.append("--parameter")
-        options.append(contents["parameter"])
-
-    return options
-
-
 class TestCase():
 
     def __init__(self, 
                  suite_name: str, 
                  test_name: str, 
-                 top_results_dir: Path,
-                 input: Path,
-                 output: Path,
-                 options: list[str],):
+                 top_results_dir: Path):
         """CHANGE ME!"""
         self.status = True
         self.suite_name: str = suite_name
         self.test_name: str = test_name
         self.top_results_dir: Path = top_results_dir
-        self.input: Path = input
-        self.output: Path = output
-        self.options: list[str] = options
         self.suite_results_dir: Path = top_results_dir / suite_name
         self.test_results_dir: Path = self.suite_results_dir / test_name
 
@@ -160,7 +91,9 @@ class TestCase():
 
     def run(self, program: Path, copyback: bool):
         """CHANGE ME!"""
-        proc = subprocess.run(["python3", program, self.input, WORK_DIR / self.output] + self.options, capture_output=True)
+        os.chdir(WORK_DIR)
+
+        proc = subprocess.run([program], capture_output=True)
 
         if proc.stdout != b"":
             with open(self.test_results_dir / f"{program.stem}.stdout", "wb") as f:
@@ -174,12 +107,14 @@ class TestCase():
             self.test_fail(f"{program} returned with code {proc.returncode}")
             return
 
+        # do more testing
+
         if self.status:
             self.test_pass("")
 
         if copyback:
-            shutil.copy(self.input, self.test_results_dir)
-            shutil.copy(WORK_DIR / self.output, self.test_results_dir)
+            # copy source/temp files into results directory
+            pass
 
         for f in glob(f"{WORK_DIR}/*"):
             os.remove(f)
@@ -243,23 +178,7 @@ class TestSuite():
         with open(config_file, "rb") as f:
             config: dict[str, Any] = tomllib.load(f)
 
-        self.options: list[str] = []
-        if "options" in config:
-            self.options: list[str] = collect_options(config["options"]) 
-
-        testcases: dict[str, dict] = {}
-        if "test" in config:
-            testcases = config["test"]
-
-        for testcase,content in testcases.items():
-            if "input" not in content:
-                self.suite_fail_msg(f"Suite configuration file '{config_file}' invalid. Testcase `{testcase}` defines no input.")
-                return
-
-            input: Path = TEST_DIR / content["input"]
-            output: Path = Path(input.stem+".out")
-
-            self.tests.append(TestCase(self.suite_name, testcase, self.top_results_dir, input, output, self.options))
+        # configure stuff with the data in `config`
 
     def run(self, program: Path, copyback: bool):
         """CHANGE ME!"""
@@ -284,6 +203,7 @@ def main(program: Path,
          results_dir: Path, 
          suite_names: list[str],
          copyback: bool):
+    """Runs `program` on each suite in `suite_names` and stores results in `results_dir`."""
     suites: list[TestSuite] = []
     for suite_name in suite_names:
         suites.append(TestSuite(suite_name, results_dir))

@@ -1,0 +1,10 @@
+suite = "example_1"
+
+[options]
+compile = true
+
+[test]
+files = [
+  "A.txt",
+  "B.txt"
+]

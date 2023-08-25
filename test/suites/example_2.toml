@@ -1,0 +1,14 @@
+suite = "example_2"
+
+[options]
+option = true
+
+[test]
+
+    [test.A]
+    file = "A.txt"
+    parameter = 25
+
+    [test.B]
+    file = "B.txt"
+    option = false # override global option
